@@ -5,24 +5,33 @@ import { useRouter } from "next/navigation";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
 import { useMounted } from "@/hooks/use-mounted";
 import { useDateParam } from "@/hooks/use-date-param";
+import { useAuth } from "@/components/AuthProvider";
 import { Loader2 } from "lucide-react";
 import { FoodSearch } from "@/components/FoodSearch";
 
 function SearchContent() {
   const router = useRouter();
   const onboarded = useAppStore((s) => s.profile.onboarded);
+  const activeUserId = useAppStore((s) => s.activeUserId);
   const hasHydrated = useHasHydrated();
   const mounted = useMounted();
+  const auth = useAuth();
   // Diary date foods will be logged into, carried over from the dashboard.
   const date = useDateParam();
+  const synced =
+    auth.status === "signedIn" && activeUserId === auth.user.uid;
 
   useEffect(() => {
-    if (hasHydrated && !onboarded) {
-      router.replace("/onboarding");
+    if (!hasHydrated || auth.status === "loading") return;
+    if (auth.status === "signedOut") {
+      router.replace("/auth");
+      return;
     }
-  }, [hasHydrated, onboarded, router]);
+    if (activeUserId !== auth.user.uid) return;
+    if (!onboarded) router.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId, router]);
 
-  if (!mounted) {
+  if (!mounted || !synced) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

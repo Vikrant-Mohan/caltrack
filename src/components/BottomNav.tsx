@@ -13,7 +13,8 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  if (pathname.startsWith("/onboarding")) return null;
+  if (pathname.startsWith("/onboarding") || pathname.startsWith("/auth"))
+    return null;
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-4">
       <div className="pointer-events-auto flex h-16 w-full max-w-md items-center justify-around rounded-full border border-border/60 bg-card/90 px-3 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-xl">

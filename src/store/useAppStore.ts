@@ -32,33 +32,47 @@ if (typeof window !== "undefined") {
   }
 }
 
+/** Uid bucket that old single-user (pre-auth) data is migrated into. */
+const LOCAL_BUCKET = "_local";
+
 function makeId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export interface AppState {
-  // User profile & goals
+export interface UserData {
   profile: UserProfile;
+  logsByDate: Record<string, FoodLog[]>;
+  recentFoods: FoodItem[];
+  weightByDate: Record<string, number>;
+}
+
+export interface AppState {
+  /** Per-account data keyed by auth uid (the persisted source of truth). */
+  users: Record<string, UserData>;
+  /** Uid of the signed-in user (null when signed out). */
+  activeUserId: string | null;
+  // Mirrors of the active user's data — components read these as before.
+  profile: UserProfile;
+  logsByDate: Record<string, FoodLog[]>;
+  recentFoods: FoodItem[];
+  weightByDate: Record<string, number>;
+  // Actions
   setProfile: (updates: Partial<UserProfile>) => void;
   completeOnboarding: (profile: UserProfile) => void;
-  // Food logs keyed by date string "yyyy-MM-dd"
-  logsByDate: Record<string, FoodLog[]>;
   addLog: (date: string, logData: Omit<FoodLog, "id" | "loggedAt">) => FoodLog;
   removeLog: (date: string, logId: string) => void;
   updateLog: (date: string, log: FoodLog) => void;
   getLogsForDate: (date: string) => FoodLog[];
-  // Recently logged foods (most recent first) for quick re-adding.
-  recentFoods: FoodItem[];
-  // Weight check-ins keyed by date "yyyy-MM-dd" (one per day, kg).
-  weightByDate: Record<string, number>;
   checkInWeight: (date: string, weightKg: number) => void;
   removeWeightEntry: (date: string) => void;
+  signInAs: (uid: string) => void;
+  signOutUser: () => void;
   // UI state
   activeMeal: MealType;
   setActiveMeal: (meal: MealType) => void;
 }
 
-const initialProfile: UserProfile = {
+export const initialProfile: UserProfile = {
   name: "",
   age: 0,
   gender: "male",
@@ -73,40 +87,86 @@ const initialProfile: UserProfile = {
   onboarded: false,
 };
 
+function emptyUser(): UserData {
+  return {
+    profile: { ...initialProfile },
+    logsByDate: {},
+    recentFoods: [],
+    weightByDate: {},
+  };
+}
+
+/** Profile as persisted by very old builds (raw macro keys instead of target*). */
+function repairProfile(profile?: Partial<UserProfile & MacroTargets>): UserProfile {
+  const base = { ...initialProfile, ...(profile ?? {}) };
+  const p = base as UserProfile;
+  const legacy = profile as (UserProfile & Partial<MacroTargets>) | undefined;
+  if (
+    legacy &&
+    legacy.targetCalories === undefined &&
+    typeof legacy.calories === "number"
+  ) {
+    p.targetCalories = legacy.calories;
+    p.targetProtein = legacy.protein;
+    p.targetCarbs = legacy.carbs;
+    p.targetFat = legacy.fat;
+  }
+  return p;
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
+      users: {},
+      activeUserId: null,
       profile: initialProfile,
       logsByDate: {},
       recentFoods: [],
       weightByDate: {},
       activeMeal: "breakfast",
+
       setProfile: (updates: Partial<UserProfile>) => {
-        const profile = { ...get().profile, ...updates };
-        const targets = calculateTdee(profile);
-        set({
-          profile: {
-            ...profile,
-            targetCalories: targets.calories,
-            targetProtein: targets.protein,
-            targetCarbs: targets.carbs,
-            targetFat: targets.fat,
-          },
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const profile = { ...user.profile, ...updates };
+          const targets = calculateTdee(profile);
+          const nextUser = {
+            ...user,
+            profile: {
+              ...profile,
+              targetCalories: targets.calories,
+              targetProtein: targets.protein,
+              targetCarbs: targets.carbs,
+              targetFat: targets.fat,
+            },
+          };
+          return withActive(state, uid, nextUser);
         });
       },
+
       completeOnboarding: (profile: UserProfile) => {
-        const targets = calculateTdee(profile);
-        set({
-          profile: {
-            ...profile,
-            targetCalories: targets.calories,
-            targetProtein: targets.protein,
-            targetCarbs: targets.carbs,
-            targetFat: targets.fat,
-            onboarded: true,
-          },
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const targets = calculateTdee(profile);
+          const nextUser = {
+            ...user,
+            profile: {
+              ...profile,
+              targetCalories: targets.calories,
+              targetProtein: targets.protein,
+              targetCarbs: targets.carbs,
+              targetFat: targets.fat,
+              onboarded: true,
+            },
+          };
+          return withActive(state, uid, nextUser);
         });
       },
+
       addLog: (date: string, logData: Omit<FoodLog, "id" | "loggedAt">) => {
         const log: FoodLog = {
           ...logData,
@@ -114,88 +174,192 @@ export const useAppStore = create<AppState>()(
           loggedAt: new Date().toISOString(),
         };
         set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
           // Track the food in recents (deduped by id, newest first, capped).
           const recentFoods = [
             logData.food,
-            ...state.recentFoods.filter((f) => f.id !== logData.food.id),
+            ...user.recentFoods.filter((f) => f.id !== logData.food.id),
           ].slice(0, 12);
-          return {
+          const nextUser = {
+            ...user,
             logsByDate: {
-              ...state.logsByDate,
-              [date]: [...(state.logsByDate[date] || []), log],
+              ...user.logsByDate,
+              [date]: [...(user.logsByDate[date] || []), log],
             },
             recentFoods,
           };
+          return withActive(state, uid, nextUser);
         });
         return log;
       },
+
       removeLog: (date: string, logId: string) => {
-        set((state) => ({
-          logsByDate: {
-            ...state.logsByDate,
-            [date]: (state.logsByDate[date] || []).filter((l) => l.id !== logId),
-          },
-        }));
-      },
-      checkInWeight: (date: string, weightKg: number) => {
-        set((state) => ({
-          weightByDate: { ...state.weightByDate, [date]: weightKg },
-        }));
-      },
-      removeWeightEntry: (date: string) => {
         set((state) => {
-          const next = { ...state.weightByDate };
-          delete next[date];
-          return { weightByDate: next };
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const nextUser = {
+            ...user,
+            logsByDate: {
+              ...user.logsByDate,
+              [date]: (user.logsByDate[date] || []).filter(
+                (l) => l.id !== logId,
+              ),
+            },
+          };
+          return withActive(state, uid, nextUser);
         });
       },
+
       updateLog: (date: string, log: FoodLog) => {
-        set((state) => ({
-          logsByDate: {
-            ...state.logsByDate,
-            [date]: (state.logsByDate[date] || []).map((l) =>
-              l.id === log.id ? log : l,
-            ),
-          },
-        }));
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const nextUser = {
+            ...user,
+            logsByDate: {
+              ...user.logsByDate,
+              [date]: (user.logsByDate[date] || []).map((l) =>
+                l.id === log.id ? log : l,
+              ),
+            },
+          };
+          return withActive(state, uid, nextUser);
+        });
       },
+
       getLogsForDate: (date: string) => get().logsByDate[date] || [],
+
+      checkInWeight: (date: string, weightKg: number) => {
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const nextUser = {
+            ...user,
+            weightByDate: { ...user.weightByDate, [date]: weightKg },
+          };
+          return withActive(state, uid, nextUser);
+        });
+      },
+
+      removeWeightEntry: (date: string) => {
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const weightByDate = { ...user.weightByDate };
+          delete weightByDate[date];
+          const nextUser = { ...user, weightByDate };
+          return withActive(state, uid, nextUser);
+        });
+      },
+
+      signInAs: (uid: string) => {
+        set((state) => {
+          if (!uid) return {};
+          let users = state.users;
+          let user = users[uid];
+          if (!user) {
+            // First account on this device: adopt the pre-auth local data
+            // (if any) so existing profiles/logs survive the migration.
+            const local = users[LOCAL_BUCKET];
+            if (local) {
+              const rest = { ...users };
+              delete rest[LOCAL_BUCKET];
+              users = { ...rest, [uid]: local };
+              user = local;
+            } else {
+              user = emptyUser();
+              users = { ...users, [uid]: user };
+            }
+          }
+          return {
+            users,
+            activeUserId: uid,
+            profile: user.profile,
+            logsByDate: user.logsByDate,
+            recentFoods: user.recentFoods,
+            weightByDate: user.weightByDate,
+          };
+        });
+      },
+
+      signOutUser: () => {
+        set({
+          activeUserId: null,
+          profile: initialProfile,
+          logsByDate: {},
+          recentFoods: [],
+          weightByDate: {},
+        });
+      },
+
       setActiveMeal: (meal: MealType) => set({ activeMeal: meal }),
     }),
     {
       name: STORAGE_KEY,
       partialize: (state) => ({
-        profile: state.profile,
-        logsByDate: state.logsByDate,
-        recentFoods: state.recentFoods,
-        weightByDate: state.weightByDate,
+        users: state.users,
+        activeUserId: state.activeUserId,
       }),
-      // Repair profiles persisted before targets were stored under `target*`
-      // keys — an earlier build merged the raw MacroTargets keys instead.
-      merge: (persisted, current) => {
-        const state = (persisted ?? {}) as Partial<AppState>;
-        const profile: UserProfile = {
-          ...current.profile,
-          ...(state.profile ?? {}),
+      merge: (persistedRaw, current) => {
+        const state = (persistedRaw ?? {}) as Partial<AppState> & {
+          profile?: Partial<UserProfile & MacroTargets>;
+          logsByDate?: Record<string, FoodLog[]>;
+          recentFoods?: FoodItem[];
+          weightByDate?: Record<string, number>;
         };
-        const legacy = state.profile as
-          | (UserProfile & Partial<MacroTargets>)
-          | undefined;
-        if (
-          legacy &&
-          legacy.targetCalories === undefined &&
-          typeof legacy.calories === "number"
-        ) {
-          profile.targetCalories = legacy.calories;
-          profile.targetProtein = legacy.protein;
-          profile.targetCarbs = legacy.carbs;
-          profile.targetFat = legacy.fat;
+        if (state.users && typeof state.users === "object") {
+          // Current shape: per-user buckets. Restore the mirrors for the
+          // persisted active user so reloads don't boot into an empty profile.
+          const users = state.users as Record<string, UserData>;
+          const activeUserId = state.activeUserId ?? null;
+          const activeUser = activeUserId ? users[activeUserId] : undefined;
+          return {
+            ...current,
+            users,
+            activeUserId,
+            profile: activeUser?.profile ?? current.profile,
+            logsByDate: activeUser?.logsByDate ?? {},
+            recentFoods: activeUser?.recentFoods ?? [],
+            weightByDate: activeUser?.weightByDate ?? {},
+          };
         }
-        return { ...current, ...state, profile };
+        // Legacy shape: one device-wide user saved before auth existed.
+        const user: UserData = {
+          profile: repairProfile(state.profile),
+          logsByDate: state.logsByDate ?? {},
+          recentFoods: state.recentFoods ?? [],
+          weightByDate: state.weightByDate ?? {},
+        };
+        return {
+          ...current,
+          users: { [LOCAL_BUCKET]: user },
+          activeUserId: null,
+        };
       },
     },
   ),
 );
+
+/** Helper for actions: write the updated user and refresh the mirrors. */
+function withActive(
+  state: AppState,
+  uid: string,
+  userData: UserData,
+): Partial<AppState> {
+  return {
+    users: { ...state.users, [uid]: userData },
+    profile: userData.profile,
+    logsByDate: userData.logsByDate,
+    recentFoods: userData.recentFoods,
+    weightByDate: userData.weightByDate,
+  };
+}
 
 // Selectors.
 // IMPORTANT: selectors must return referentially stable values. `getLogsForDate`

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, useHasHydrated } from "@/store/useAppStore";
+import { useMounted } from "@/hooks/use-mounted";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,9 +24,45 @@ import {
 } from "@/components/ui/select";
 import type { ActivityLevel, Gender, Goal, UserProfile } from "@/lib/types";
 import { calculateTdee } from "@/lib/tdee";
-import { Flame } from "lucide-react";
+import { Flame, Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
+  const router = useRouter();
+  // The persisted profile rehydrates from localStorage after the first client
+  // render, so the server HTML and the first client render must stay
+  // identical (a loader) — the form only mounts once hydration has finished
+  // AND the signed-in user's data is synced, which also lets it prefill
+  // cleanly from an existing profile.
+  const mounted = useMounted();
+  const hasHydrated = useHasHydrated();
+  const auth = useAuth();
+  const onboarded = useAppStore((s) => s.profile.onboarded);
+  const activeUserId = useAppStore((s) => s.activeUserId);
+  const synced =
+    auth.status === "signedIn" && activeUserId === auth.user.uid;
+
+  useEffect(() => {
+    if (!hasHydrated || auth.status === "loading") return;
+    if (auth.status === "signedOut") {
+      router.replace("/auth");
+      return;
+    }
+    if (activeUserId !== auth.user.uid) return;
+    // Already set up (e.g. the race while the store syncs) — go to dashboard.
+    if (onboarded) router.replace("/dashboard");
+  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+
+  if (!mounted || !hasHydrated || !synced) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return <OnboardingForm />;
+}
+
+function OnboardingForm() {
   const router = useRouter();
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const existingProfile = useAppStore((s) => s.profile);

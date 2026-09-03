@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
 import { useMounted } from "@/hooks/use-mounted";
+import { useAuth } from "@/components/AuthProvider";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   Loader2,
   ScanBarcode,
   Search,
+  Settings,
   Trash2,
 } from "lucide-react";
 import { CalorieRing } from "@/components/CalorieRing";
@@ -63,16 +65,25 @@ export default function DashboardPage() {
   const onboarded = profile.onboarded;
   const hasHydrated = useHasHydrated();
   const mounted = useMounted();
+  const auth = useAuth();
+  const activeUserId = useAppStore((s) => s.activeUserId);
+  const synced =
+    auth.status === "signedIn" && activeUserId === auth.user.uid;
 
   // The diary day currently on screen (today by default). Everything below —
   // the ring, macros, week strip highlight and diary — follows this date.
   const [viewedDate, setViewedDate] = useState<string>(restoreViewedDate);
 
   useEffect(() => {
-    if (hasHydrated && !onboarded) {
-      router.replace("/onboarding");
+    if (!hasHydrated || auth.status === "loading") return;
+    if (auth.status === "signedOut") {
+      router.replace("/auth");
+      return;
     }
-  }, [hasHydrated, onboarded, router]);
+    // Wait until the store mirrors this user's data.
+    if (activeUserId !== auth.user.uid) return;
+    if (!onboarded) router.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId, router]);
 
   useEffect(() => {
     try {
@@ -135,7 +146,7 @@ export default function DashboardPage() {
 
   // Keep the SSR tree and the first client render identical to avoid a
   // hydration mismatch once persisted state arrives.
-  if (!mounted) {
+  if (!mounted || !synced) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -184,15 +195,25 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">{viewedLabel}</p>
             </div>
           </div>
-          <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold capitalize text-secondary-foreground">
-            {profile.goal === "maintain"
-              ? "Maintain"
-              : profile.goal === "lose"
-                ? "Losing · 0.5kg/wk"
-                : profile.goal === "gain"
-                  ? "Gaining · 0.5kg/wk"
-                  : `Custom · ${profile.customCalories ?? profile.targetCalories ?? ""} kcal`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold capitalize text-secondary-foreground">
+              {profile.goal === "maintain"
+                ? "Maintain"
+                : profile.goal === "lose"
+                  ? "Losing · 0.5kg/wk"
+                  : profile.goal === "gain"
+                    ? "Gaining · 0.5kg/wk"
+                    : `Custom · ${profile.customCalories ?? profile.targetCalories ?? ""} kcal`}
+            </span>
+            <button
+              onClick={() => router.push("/profile")}
+              aria-label="Profile and settings"
+              title="Profile & goals"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
