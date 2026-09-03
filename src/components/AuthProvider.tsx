@@ -9,6 +9,7 @@ import {
 } from "react";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth, isAuthConfigured } from "@/lib/firebase";
+import { handleGoogleRedirect } from "@/lib/auth-api";
 import { useAppStore } from "@/store/useAppStore";
 
 export interface AuthUser {
@@ -52,6 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isAuthConfigured() || !auth) return;
+    // Complete a pending Google redirect sign-in (the page just came back
+    // from Google's consent screen). Errors here are surfaced on the auth
+    // page next time; the session itself is handled by onAuthStateChanged.
+    void handleGoogleRedirect().then(({ error }) => {
+      if (error) console.warn("Google redirect sign-in failed:", error);
+    });
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setState(
         fbUser

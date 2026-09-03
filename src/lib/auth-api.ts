@@ -2,10 +2,11 @@
 
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "./firebase";
@@ -38,7 +39,9 @@ export function authErrorMessage(error: unknown): string {
     case "auth/too-many-requests":
       return "Too many attempts — please wait a minute and try again.";
     case "auth/popup-closed-by-user":
-      return "The sign-in popup was closed before finishing.";
+      return "The sign-in window was closed before finishing — try again.";
+    case "auth/popup-blocked":
+      return "Your browser blocked the sign-in popup — try again; Google now opens as a full-page redirect.";
     case "auth/unauthorized-domain":
       return "This domain isn't authorized for Google sign-in in your Firebase project.";
     case "auth/operation-not-allowed":
@@ -74,7 +77,28 @@ export async function logInWithEmail(email: string, password: string): Promise<v
 export async function logInWithGoogle(): Promise<void> {
   const fb = requireAuth();
   const provider = new GoogleAuthProvider();
-  await signInWithPopup(fb, provider);
+  // Redirect instead of popup: embedded webviews, installed PWAs and strict
+  // browsers block signInWithPopup (auth/popup-blocked). A full-page redirect
+  // to Google's consent screen works in every environment.
+  await signInWithRedirect(fb, provider);
+}
+
+/**
+ * Complete a pending Google redirect sign-in. Call once when the app loads:
+ * after Google redirects back, the SDK finishes the exchange here. Returns
+ * the signed-in user or the error (e.g. the user cancelled on Google).
+ */
+export async function handleGoogleRedirect(): Promise<{
+  user: unknown;
+  error: unknown;
+}> {
+  if (!auth) return { user: null, error: null };
+  try {
+    const result = await getRedirectResult(auth);
+    return { user: result?.user ?? null, error: null };
+  } catch (err) {
+    return { user: null, error: err };
+  }
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {

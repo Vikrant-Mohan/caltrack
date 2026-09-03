@@ -58,11 +58,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // Browser extensions (e.g. LanguageTool) inject attributes like
+    // data-lt-installed="true" into the DOM before React hydrates, which
+    // makes the server HTML look different from the client render. Telling
+    // React to skip hydration checks on the root elements keeps those
+    // extension edits from surfacing as "hydration failed" errors.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`h-full ${geistSans.variable} ${geistMono.variable} ${outfit.variable}`}
     >
-      <body className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+      <body
+        suppressHydrationWarning
+        className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased"
+      >
         <AuthProvider>
           <div className="flex-1 pb-24">{children}</div>
           <BottomNav />

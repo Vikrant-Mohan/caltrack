@@ -80,9 +80,22 @@ export default function AuthPage() {
     setNotice(null);
     setBusy(true);
     try {
-      await logInWithGoogle();
+      // signInWithRedirect should navigate away almost immediately. If the
+      // browser (or an embedded webview) blocks the navigation, the promise
+      // can hang forever — bail out with a friendly message instead of a
+      // stuck spinner.
+      await Promise.race([
+        logInWithGoogle(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("redirect-timeout")), 12000),
+        ),
+      ]);
     } catch (err) {
-      setError(authErrorMessage(err));
+      setError(
+        err instanceof Error && err.message === "redirect-timeout"
+          ? "The sign-in window didn't open — your browser may be blocking it. Try again, or sign in with email."
+          : authErrorMessage(err),
+      );
     } finally {
       setBusy(false);
     }
