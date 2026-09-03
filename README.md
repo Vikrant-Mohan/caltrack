@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Caltrack 🔥
 
-## Getting Started
+A free, mobile-first calorie tracker — a lightweight alternative to Lose It!.
+Log meals by search or barcode scan, track macros against your goal, and check
+in your weight each day to watch the trend against your lose/gain pace.
 
-First, run the development server:
+## Features
+
+- **Onboarding & TDEE** — Mifflin-St Jeor calculator with activity multipliers,
+  a Lose/Maintain/Gain goal (or a custom daily calorie budget), and an
+  automatic 30/40/30 protein/carbs/fat split.
+- **Dashboard diary** — day-by-day diary with prev/next day arrows, a calorie
+  ring, macro bars, per-meal groups, and a weekly summary with mini rings and
+  7-day average macros vs. your targets.
+- **Food search** — searches **USDA FoodData Central** (generic foods like
+  "bread, whole wheat") and **OpenFoodFacts** (branded products), deduped and
+  merged. Products resolve to real household servings ("1 large slice (43 g)")
+  and anything you log lands in Recents for one-tap re-logging.
+- **Barcode scanner** — scans product barcodes via the camera and looks them up
+  in OpenFoodFacts.
+- **Weight check-ins** — one entry per day, editable/removable, with a trend
+  chart and a dashed goal-pace line vs. your ±0.5 kg/week goal.
+
+All data stays on your device (Zustand + localStorage) — no account, no
+backend.
+
+## Tech stack
+
+Next.js (App Router) · React · TypeScript · Tailwind CSS · shadcn/ui (Base UI) ·
+Zustand · recharts · html5-qrcode · date-fns
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### USDA FoodData Central (optional, recommended)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Food search falls back to OpenFoodFacts only when the USDA key is missing.
+Get a free key at https://fdc.nal.usda.gov/api-key-signup.html, then create a
+`.env.local` from the template:
 
-## Learn More
+```bash
+cp .env.local.example .env.local
+# add your FDC_API_KEY
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` — dev server
+- `npm run build` / `npm start` — production build / serve
+- `npm run lint` — ESLint
+- `npx tsc --noEmit` — typecheck
