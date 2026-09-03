@@ -49,9 +49,14 @@ cp .env.local.example .env.local
 # add your FDC_API_KEY
 ```
 
+## Install as an app
+
+Caltrack is a PWA — see [install.md](install.md) for how to install it on desktop, Android and iOS, plus localhost testing notes.
+
 ## Scripts
 
 - `npm run dev` — dev server
 - `npm run build` / `npm start` — production build / serve
 - `npm run lint` — ESLint
+- `npm run icons` — regenerate the PWA icons
 - `npx tsc --noEmit` — typecheck
