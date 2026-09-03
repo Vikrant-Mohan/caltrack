@@ -5,7 +5,11 @@ import { Flame, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/components/AuthProvider";
+import {
+  useAuth,
+  useAuthError,
+  useClearAuthError,
+} from "@/components/AuthProvider";
 import { isAuthConfigured } from "@/lib/firebase";
 import {
   authErrorMessage,
@@ -21,6 +25,8 @@ type Mode = "signin" | "signup";
 
 export default function AuthPage() {
   const authState = useAuth();
+  const redirectError = useAuthError();
+  const clearRedirectError = useClearAuthError();
   const onboarded = useAppStore((s) => s.profile.onboarded);
   const hasHydrated = useHasHydrated();
 
@@ -52,6 +58,7 @@ export default function AuthPage() {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    clearRedirectError();
     if (!email.trim()) {
       setError("Enter your email address.");
       return;
@@ -78,6 +85,7 @@ export default function AuthPage() {
   const googleSignIn = async () => {
     setError(null);
     setNotice(null);
+    clearRedirectError();
     setBusy(true);
     try {
       // signInWithRedirect should navigate away almost immediately. If the
@@ -108,6 +116,7 @@ export default function AuthPage() {
     }
     setBusy(true);
     setError(null);
+    clearRedirectError();
     try {
       await sendPasswordReset(email.trim());
       setNotice("Password reset email sent — check your inbox.");
@@ -161,6 +170,7 @@ export default function AuthPage() {
                   setMode(t.key);
                   setError(null);
                   setNotice(null);
+                  clearRedirectError();
                 }}
                 className={cn(
                   "rounded-full py-2 text-sm font-semibold transition-colors",
@@ -232,9 +242,9 @@ export default function AuthPage() {
               />
             </div>
 
-            {error && (
+            {(redirectError || error) && (
               <p className="rounded-xl bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600">
-                {error}
+                {redirectError ?? error}
               </p>
             )}
             {notice && (

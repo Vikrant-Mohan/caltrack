@@ -43,7 +43,7 @@ export function authErrorMessage(error: unknown): string {
     case "auth/popup-blocked":
       return "Your browser blocked the sign-in popup — try again; Google now opens as a full-page redirect.";
     case "auth/unauthorized-domain":
-      return "This domain isn't authorized for Google sign-in in your Firebase project.";
+      return "This domain isn't authorized for Google sign-in. Add it in the Firebase console (Authentication → Settings → Authorized domains).";
     case "auth/operation-not-allowed":
       return "Email/password or Google sign-in isn't enabled in your Firebase console.";
     default:

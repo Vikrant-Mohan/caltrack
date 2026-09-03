@@ -9,7 +9,7 @@ import {
 } from "react";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { auth, isAuthConfigured } from "@/lib/firebase";
-import { handleGoogleRedirect } from "@/lib/auth-api";
+import { authErrorMessage, handleGoogleRedirect } from "@/lib/auth-api";
 import { useAppStore } from "@/store/useAppStore";
 
 export interface AuthUser {
@@ -24,7 +24,19 @@ export type AuthState =
   | { status: "signedOut" }
   | { status: "signedIn"; user: AuthUser };
 
-const AuthContext = createContext<AuthState>({ status: "loading" });
+interface AuthContextValue {
+  state: AuthState;
+  /** Friendly message for a failed Google redirect sign-in, if one just
+   *  happened on this page load (e.g. unauthorized domain). */
+  redirectError: string | null;
+  clearRedirectError: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue>({
+  state: { status: "loading" },
+  redirectError: null,
+  clearRedirectError: () => {},
+});
 
 function mapUser(fb: FirebaseUser): AuthUser {
   return {
@@ -50,14 +62,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ? { status: "signedIn", user: LOCAL_USER }
       : { status: "loading" },
   );
+  const [redirectError, setRedirectError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthConfigured() || !auth) return;
     // Complete a pending Google redirect sign-in (the page just came back
-    // from Google's consent screen). Errors here are surfaced on the auth
-    // page next time; the session itself is handled by onAuthStateChanged.
+    // from Google's consent screen). Failures here were previously invisible
+    // — the user was silently dropped back on the sign-in form — so surface
+    // them as a friendly message on the auth page.
     void handleGoogleRedirect().then(({ error }) => {
-      if (error) console.warn("Google redirect sign-in failed:", error);
+      if (error) {
+        console.warn("Google redirect sign-in failed:", error);
+        setRedirectError(authErrorMessage(error));
+      }
     });
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setState(
@@ -80,10 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, signInAs, signOutUser]);
 
-  const value = useMemo(() => state, [state]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      state,
+      redirectError,
+      clearRedirectError: () => setRedirectError(null),
+    }),
+    [state, redirectError],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {
-  return useContext(AuthContext);
+  return useContext(AuthContext).state;
+}
+
+/** Friendly message for a failed Google redirect sign-in on this load. */
+export function useAuthError(): string | null {
+  return useContext(AuthContext).redirectError;
+}
+
+export function useClearAuthError(): () => void {
+  return useContext(AuthContext).clearRedirectError;
 }
