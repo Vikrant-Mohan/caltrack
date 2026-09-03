@@ -25,12 +25,12 @@ function ScannerContent() {
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
     if (auth.status === "signedOut") {
-      router.replace("/auth");
+      window.location.replace("/auth");
       return;
     }
     if (activeUserId !== auth.user.uid) return;
-    if (!onboarded) router.replace("/onboarding");
-  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+    if (!onboarded) window.location.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId]);
 
   if (!mounted || !synced) {
     return (

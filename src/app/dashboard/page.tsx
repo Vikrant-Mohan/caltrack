@@ -77,13 +77,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
     if (auth.status === "signedOut") {
-      router.replace("/auth");
+      window.location.replace("/auth");
       return;
     }
     // Wait until the store mirrors this user's data.
     if (activeUserId !== auth.user.uid) return;
-    if (!onboarded) router.replace("/onboarding");
-  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+    if (!onboarded) window.location.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId]);
 
   useEffect(() => {
     try {

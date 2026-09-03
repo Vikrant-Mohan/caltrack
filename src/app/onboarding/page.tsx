@@ -27,7 +27,6 @@ import { calculateTdee } from "@/lib/tdee";
 import { Flame, Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
-  const router = useRouter();
   // The persisted profile rehydrates from localStorage after the first client
   // render, so the server HTML and the first client render must stay
   // identical (a loader) — the form only mounts once hydration has finished
@@ -44,13 +43,13 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
     if (auth.status === "signedOut") {
-      router.replace("/auth");
+      window.location.replace("/auth");
       return;
     }
     if (activeUserId !== auth.user.uid) return;
     // Already set up (e.g. the race while the store syncs) — go to dashboard.
-    if (onboarded) router.replace("/dashboard");
-  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+    if (onboarded) window.location.replace("/dashboard");
+  }, [hasHydrated, auth, onboarded, activeUserId]);
 
   if (!mounted || !hasHydrated || !synced) {
     return (

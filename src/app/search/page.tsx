@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
 import { useMounted } from "@/hooks/use-mounted";
 import { useDateParam } from "@/hooks/use-date-param";
@@ -10,7 +9,6 @@ import { Loader2 } from "lucide-react";
 import { FoodSearch } from "@/components/FoodSearch";
 
 function SearchContent() {
-  const router = useRouter();
   const onboarded = useAppStore((s) => s.profile.onboarded);
   const activeUserId = useAppStore((s) => s.activeUserId);
   const hasHydrated = useHasHydrated();
@@ -24,12 +22,12 @@ function SearchContent() {
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
     if (auth.status === "signedOut") {
-      router.replace("/auth");
+      window.location.replace("/auth");
       return;
     }
     if (activeUserId !== auth.user.uid) return;
-    if (!onboarded) router.replace("/onboarding");
-  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+    if (!onboarded) window.location.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId]);
 
   if (!mounted || !synced) {
     return (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Flame, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,6 @@ import { cn } from "@/lib/utils";
 type Mode = "signin" | "signup";
 
 export default function AuthPage() {
-  const router = useRouter();
   const authState = useAuth();
   const onboarded = useAppStore((s) => s.profile.onboarded);
   const hasHydrated = useHasHydrated();
@@ -39,8 +37,8 @@ export default function AuthPage() {
   // Already signed in — go where the profile says.
   useEffect(() => {
     if (authState.status !== "signedIn" || !hasHydrated) return;
-    router.replace(onboarded ? "/dashboard" : "/onboarding");
-  }, [authState.status, hasHydrated, onboarded, router]);
+    window.location.replace(onboarded ? "/dashboard" : "/onboarding");
+  }, [authState.status, hasHydrated, onboarded]);
 
   if (authState.status === "signedIn") {
     return (

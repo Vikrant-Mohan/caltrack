@@ -30,7 +30,6 @@ import { calculateTdee } from "@/lib/tdee";
 import { Loader2, LogOut, Settings } from "lucide-react";
 
 export default function ProfilePage() {
-  const router = useRouter();
   const mounted = useMounted();
   const hasHydrated = useHasHydrated();
   const auth = useAuth();
@@ -42,12 +41,12 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
     if (auth.status === "signedOut") {
-      router.replace("/auth");
+      window.location.replace("/auth");
       return;
     }
     if (activeUserId !== auth.user.uid) return;
-    if (!onboarded) router.replace("/onboarding");
-  }, [hasHydrated, auth, onboarded, activeUserId, router]);
+    if (!onboarded) window.location.replace("/onboarding");
+  }, [hasHydrated, auth, onboarded, activeUserId]);
 
   if (!mounted || !synced) {
     return (
