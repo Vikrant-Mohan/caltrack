@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
 import { useMounted } from "@/hooks/use-mounted";
@@ -8,7 +8,20 @@ import { useDateParam } from "@/hooks/use-date-param";
 import { useAuth } from "@/components/AuthProvider";
 import { Loader2, CalendarDays } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { MealPhotoScanner } from "@/components/MealPhotoScanner";
 import { formatDateLong, todayKey } from "@/lib/date";
+import { cn } from "@/lib/utils";
+
+type ScanMode = "barcode" | "photo";
+
+const MODE_STORAGE_KEY = "caltrack-scan-mode";
+
+function loadInitialMode(): ScanMode {
+  if (typeof window === "undefined") return "photo";
+  return localStorage.getItem(MODE_STORAGE_KEY) === "barcode"
+    ? "barcode"
+    : "photo";
+}
 
 function ScannerContent() {
   const router = useRouter();
@@ -21,6 +34,9 @@ function ScannerContent() {
   const date = useDateParam();
   const synced =
     auth.status === "signedIn" && activeUserId === auth.user.uid;
+  // `mode` reads localStorage lazily so it is correct on first client render
+  // (no flash of the wrong mode); server render always gets "photo".
+  const [mode, setMode] = useState<ScanMode>(loadInitialMode);
 
   useEffect(() => {
     if (!hasHydrated || auth.status === "loading") return;
@@ -44,15 +60,26 @@ function ScannerContent() {
 
   const loggingToday = date === todayKey();
 
+  const switchMode = (next: ScanMode) => {
+    setMode(next);
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, next);
+    } catch {
+      // Storage unavailable — mode just won't persist.
+    }
+  };
+
   return (
     <main className="min-h-screen pb-28">
       <header className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto max-w-md px-4 py-4">
           <h1 className="font-display text-xl font-bold tracking-tight">
-            Scan Barcode
+            Scan
           </h1>
           <p className="text-sm text-muted-foreground">
-            Scan a product to look it up in OpenFoodFacts.
+            {mode === "barcode"
+              ? "Scan a product barcode to look it up in OpenFoodFacts."
+              : "Photograph a meal — AI estimates calories and macros."}
           </p>
         </div>
       </header>
@@ -75,9 +102,38 @@ function ScannerContent() {
           </div>
         )}
 
-        <div className="flex justify-center">
-          <BarcodeScanner dateKey={date} />
+        {/* Barcode / Photo mode toggle */}
+        <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+          {(
+            [
+              { id: "barcode", label: "Barcode" },
+              { id: "photo", label: "Photo" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => switchMode(tab.id)}
+              className={cn(
+                "rounded-xl py-2.5 text-sm font-semibold transition-colors",
+                mode === tab.id
+                  ? "bg-card text-foreground shadow-md shadow-black/5"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              aria-pressed={mode === tab.id}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Only the active mode is mounted, so switching releases the camera. */}
+        {mode === "barcode" ? (
+          <div className="flex justify-center">
+            <BarcodeScanner dateKey={date} />
+          </div>
+        ) : (
+          <MealPhotoScanner dateKey={date} />
+        )}
       </div>
     </main>
   );

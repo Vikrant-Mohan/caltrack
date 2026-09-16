@@ -31,13 +31,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Caltrack — Free Calorie Tracker",
-  description: "Caltrack — a free, mobile-first calorie tracker.",
-  applicationName: "Caltrack",
+  title: "CalTrack — Free Calorie Tracker",
+  description: "CalTrack — a free, mobile-first calorie tracker.",
+  applicationName: "CalTrack",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Caltrack",
+    title: "CalTrack",
   },
   icons: {
     icon: [

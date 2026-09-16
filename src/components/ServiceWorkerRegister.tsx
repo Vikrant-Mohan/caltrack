@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * Registers Caltrack's service worker (public/sw.js) so the app can be
+ * Registers CalTrack's service worker (public/sw.js) so the app can be
  * installed as a PWA and opened offline. Deliberately skipped in `next dev`
  * — dev-mode hot reloading and a caching service worker don't mix.
  */

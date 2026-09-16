@@ -1,4 +1,4 @@
-# Caltrack 🔥
+# CalTrack 🔥
 
 A free, mobile-first calorie tracker — a lightweight alternative to Lose It!.
 Log meals by search or barcode scan, track macros against your goal, and check
@@ -18,6 +18,14 @@ in your weight each day to watch the trend against your lose/gain pace.
   and anything you log lands in Recents for one-tap re-logging.
 - **Barcode scanner** — scans product barcodes via the camera and looks them up
   in OpenFoodFacts.
+- **AI meal photo scan** — photograph a meal and AI estimates the calories,
+  protein, carbs and fat of each item on the plate. Review and correct the
+  editable estimates before logging. Uses the Gemini API with a
+  **bring-your-own key**: get a free key at
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and add it
+  in **Profile → AI Photo Scan** (or on first use in the Photo scanner). The
+  key and photos never touch CalTrack's servers — the browser talks straight
+  to Google, and photos are analyzed but not stored.
 - **Weight check-ins** — one entry per day, editable/removable, with a trend
   chart and a dashed goal-pace line vs. your ±0.5 kg/week goal.
 
@@ -38,6 +46,12 @@ npm run dev
 
 Open http://localhost:3000.
 
+### AI meal photo scan (optional)
+
+Set up a free Gemini API key in **Profile → AI Photo Scan** to unlock photo
+scanning in the **Scan** tab (Photo mode). See the feature description above
+for privacy details.
+
 ### USDA FoodData Central (optional, recommended)
 
 Food search falls back to OpenFoodFacts only when the USDA key is missing.
@@ -51,7 +65,7 @@ cp .env.local.example .env.local
 
 ## Install as an app
 
-Caltrack is a PWA — see [install.md](install.md) for how to install it on desktop, Android and iOS, plus localhost testing notes.
+CalTrack is a PWA — see [install.md](install.md) for how to install it on desktop, Android and iOS, plus localhost testing notes.
 
 ## Scripts
 

@@ -1,5 +1,5 @@
 /**
- * Generates Caltrack's PWA icons (pure Node, no dependencies):
+ * Generates CalTrack's PWA icons (pure Node, no dependencies):
  * a green rounded square with the white calorie-ring "C" mark.
  *
  *   node scripts/gen-icons.mjs

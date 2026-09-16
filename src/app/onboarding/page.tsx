@@ -129,7 +129,7 @@ function OnboardingForm() {
             <Flame className="h-7 w-7" />
           </span>
           <h1 className="font-display text-3xl font-bold tracking-tight">
-            Welcome to Caltrack
+            Welcome to CalTrack
           </h1>
           <p className="mx-auto mt-1.5 max-w-xs text-sm text-muted-foreground">
             Your free calorie coach. We&apos;ll build your daily budget from

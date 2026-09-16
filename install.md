@@ -1,6 +1,6 @@
-# Installing Caltrack as a PWA
+# Installing CalTrack as a PWA
 
-Caltrack is a **Progressive Web App** (PWA): once installed it launches in its
+CalTrack is a **Progressive Web App** (PWA): once installed it launches in its
 own window, has an app icon on your home screen / desktop, and keeps working
 (mostly) offline thanks to its service worker. Your data lives in your
 browser's local storage, so it stays on the device you install it on.
@@ -21,7 +21,7 @@ browser's local storage, so it stays on the device you install it on.
 
 ## Install from a deployed URL
 
-1. Open the deployed Caltrack URL in your browser and complete onboarding.
+1. Open the deployed CalTrack URL in your browser and complete onboarding.
 2. Install using your platform's flow below.
 
 ## Install from localhost (development / self-hosting)
@@ -38,19 +38,19 @@ Open http://localhost:3000 and use the same platform flows below.
 
 ## Desktop — Chrome / Edge (Windows, macOS, Linux)
 
-1. Open Caltrack.
+1. Open CalTrack.
 2. Click the **install icon** in the address bar (a monitor with a down
    arrow, usually on the right). If it doesn't appear, open the
-   **⋮ (three-dot) menu → "Install Caltrack…"** or **"Cast, save and share →
+   **⋮ (three-dot) menu → "Install CalTrack…"** or **"Cast, save and share →
    Install page as app"**.
-3. Confirm the dialog — Caltrack now opens in its own window with its own
+3. Confirm the dialog — CalTrack now opens in its own window with its own
    taskbar / dock icon.
 
 ## Android — Chrome
 
-1. Open Caltrack in Chrome.
+1. Open CalTrack in Chrome.
 2. Tap the **⋮ menu → "Add to Home screen"** or **"Install app"** (you may
-   also see an "Install Caltrack" banner or a bottom-sheet prompt).
+   also see an "Install CalTrack" banner or a bottom-sheet prompt).
 3. Tap **Install** — the app appears on your home screen and launches
    full-screen without browser chrome.
 
@@ -59,11 +59,11 @@ Open http://localhost:3000 and use the same platform flows below.
 iOS doesn't show an install prompt; use Safari's home-screen shortcut, which
 installs the PWA the same way:
 
-1. Open Caltrack in Safari.
+1. Open CalTrack in Safari.
 2. Tap the **Share** button (square with an up arrow).
 3. Tap **"Add to Home Screen"**.
-4. Name it (e.g. "Caltrack") and tap **Add** — it appears as an app icon and
-   launches standalone with the Caltrack icon.
+4. Name it (e.g. "CalTrack") and tap **Add** — it appears as an app icon and
+   launches standalone with the CalTrack icon.
 
 ## Linux / other browsers
 

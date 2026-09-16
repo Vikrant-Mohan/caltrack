@@ -45,7 +45,7 @@ export interface FoodItem {
   name: string;
   brand?: string;
   /** Where the nutrition data came from, shown on result rows. */
-  source?: "usda" | "off" | "common";
+  source?: "usda" | "off" | "common" | "photo";
   image?: string;
   /** Grams that the macros below refer to (e.g. 100 or the product serving). */
   servingSize: number;

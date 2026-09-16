@@ -1,4 +1,4 @@
-/* Caltrack service worker — app-shell + static asset caching.
+/* CalTrack service worker — app-shell + static asset caching.
  * Registered only in production builds (see ServiceWorkerRegister). */
 
 const VERSION = "v1";

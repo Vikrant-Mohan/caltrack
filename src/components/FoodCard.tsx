@@ -64,6 +64,14 @@ export function FoodCard({ food, dateKey, onAdd, className, ...rest }: FoodCardP
               USDA
             </span>
           )}
+          {food.source === "photo" && (
+            <span
+              className="shrink-0 rounded bg-violet-600/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700"
+              title="Estimated from a meal photo with AI"
+            >
+              AI est.
+            </span>
+          )}
         </div>
         {food.brand && (
           <p className="truncate text-xs text-muted-foreground">

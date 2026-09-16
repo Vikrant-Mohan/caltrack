@@ -136,7 +136,7 @@ export default function AuthPage() {
             <Flame className="h-7 w-7" />
           </span>
           <h1 className="font-display text-3xl font-bold tracking-tight">
-            Welcome to Caltrack
+            Welcome to CalTrack
           </h1>
           <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
             Sign in to keep your diary, goals and weight — one account per

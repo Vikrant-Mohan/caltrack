@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Caltrack — Free Calorie Tracker",
-    short_name: "Caltrack",
+    name: "CalTrack — Free Calorie Tracker",
+    short_name: "CalTrack",
     description:
       "A free, mobile-first calorie tracker: log meals by search or barcode, hit your macro goals, and check in your weight.",
     id: "/",

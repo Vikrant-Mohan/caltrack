@@ -7,7 +7,7 @@
  * until one answers with a clean JSON response.
  */
 
-export const OFF_USER_AGENT = "caltrack/0.1 (free calorie tracker)";
+export const OFF_USER_AGENT = "CalTrack/0.1 (free calorie tracker)";
 
 export const OFF_HOSTS = [
   "world.openfoodfacts.net",

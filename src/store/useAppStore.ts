@@ -8,6 +8,7 @@ import type {
   MealType,
   UserProfile,
 } from "../lib/types";
+import type { AiSettings } from "../lib/ai/types";
 import { todayKey } from "../lib/date";
 import { calculateTdee } from "../lib/tdee";
 import { logFactor } from "../lib/food-utils";
@@ -44,6 +45,8 @@ export interface UserData {
   logsByDate: Record<string, FoodLog[]>;
   recentFoods: FoodItem[];
   weightByDate: Record<string, number>;
+  /** Bring-your-own-key AI settings for meal-photo scanning. */
+  ai?: AiSettings;
 }
 
 export interface AppState {
@@ -65,6 +68,7 @@ export interface AppState {
   getLogsForDate: (date: string) => FoodLog[];
   checkInWeight: (date: string, weightKg: number) => void;
   removeWeightEntry: (date: string) => void;
+  setAiSettings: (updates: Partial<AiSettings>) => void;
   signInAs: (uid: string) => void;
   signOutUser: () => void;
   // UI state
@@ -254,6 +258,24 @@ export const useAppStore = create<AppState>()(
           const weightByDate = { ...user.weightByDate };
           delete weightByDate[date];
           const nextUser = { ...user, weightByDate };
+          return withActive(state, uid, nextUser);
+        });
+      },
+
+      setAiSettings: (updates: Partial<AiSettings>) => {
+        set((state) => {
+          const uid = state.activeUserId;
+          if (!uid) return {};
+          const user = state.users[uid] ?? emptyUser();
+          const apiKey = updates.apiKey ?? user.ai?.apiKey ?? "";
+          const model = updates.model ?? user.ai?.model;
+          const ai: AiSettings = { apiKey, model };
+          // An empty key means "removed" — drop the whole object so no blank
+          // settings linger in storage.
+          const nextUser = {
+            ...user,
+            ai: ai.apiKey.trim() ? ai : undefined,
+          };
           return withActive(state, uid, nextUser);
         });
       },

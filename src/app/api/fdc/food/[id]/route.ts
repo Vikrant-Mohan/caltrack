@@ -30,7 +30,7 @@ export async function GET(
       const res = await fetch(url, {
         headers: {
           Accept: "application/json",
-          "User-Agent": "caltrack/0.1 (free calorie tracker)",
+          "User-Agent": "CalTrack/0.1 (free calorie tracker)",
         },
         next: { revalidate: 604800 }, // Food details change rarely.
       });

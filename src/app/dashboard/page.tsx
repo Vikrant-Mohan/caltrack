@@ -190,7 +190,7 @@ export default function DashboardPage() {
             </span>
             <div>
               <h1 className="font-display text-lg font-bold leading-tight tracking-tight">
-                {profile.name ? `Hi, ${profile.name}` : "Caltrack"}
+                {profile.name ? `Hi, ${profile.name}` : "CalTrack"}
               </h1>
               <p className="text-xs text-muted-foreground">{viewedLabel}</p>
             </div>

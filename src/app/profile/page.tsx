@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth as firebaseAuth, isAuthConfigured } from "@/lib/firebase";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
+import { testGeminiKey } from "@/lib/ai/gemini";
+import { DEFAULT_AI_MODEL } from "@/lib/ai/types";
 import { useMounted } from "@/hooks/use-mounted";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,12 @@ import {
 } from "@/components/ui/select";
 import type { ActivityLevel, Gender, Goal, UserProfile } from "@/lib/types";
 import { calculateTdee } from "@/lib/tdee";
-import { Loader2, LogOut, Settings } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  LogOut,
+  Settings,
+} from "lucide-react";
 
 export default function ProfilePage() {
   const mounted = useMounted();
@@ -63,6 +70,8 @@ export default function ProfilePage() {
 function ProfileEditor({ profile }: { profile: UserProfile }) {
   const router = useRouter();
   const setProfile = useAppStore((s) => s.setProfile);
+  const ai = useAppStore((s) => s.users[s.activeUserId ?? ""]?.ai);
+  const setAiSettings = useAppStore((s) => s.setAiSettings);
   const auth = useAuth();
 
   // Mounted only after hydration + auth sync, so this is safe to seed.
@@ -390,7 +399,218 @@ function ProfileEditor({ profile }: { profile: UserProfile }) {
             )}
           </CardContent>
         </Card>
+        <AiSettingsCard
+          ai={ai}
+          onSave={(updates) => setAiSettings(updates)}
+        />
       </div>
     </main>
+  );
+}
+
+/** Small inline SVG of the Gemini sparkle, so we don't pull another icon set. */
+function GeminiMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M12 2c.6 3.9 2.4 6.7 5.5 8.5-3.1 1.8-4.9 4.6-5.5 8.5-.6-3.9-2.4-6.7-5.5-8.5C9.6 8.7 11.4 5.9 12 2Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+interface AiSettingsCardProps {
+  ai?: { apiKey: string; model?: string };
+  onSave: (updates: { apiKey?: string; model?: string }) => void;
+}
+
+/**
+ * Bring-your-own-key settings for AI meal-photo scanning. The key lives in
+ * the user's persisted store (device-only, sent directly to Google).
+ */
+function AiSettingsCard({ ai, onSave }: AiSettingsCardProps) {
+  const hasKey = Boolean(ai?.apiKey?.trim());
+  const [keyInput, setKeyInput] = useState("");
+  const [editingKey, setEditingKey] = useState(false);
+  const [model, setModel] = useState(ai?.model || "");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<
+    { ok: true } | { ok: false; message: string } | null
+  >(null);
+
+  /**
+   * "Test key" — sends a tiny text-only request. Proves the key is valid
+   * without sending user data.
+   */
+  const handleTest = async () => {
+    const key = (keyInput.trim() || ai?.apiKey || "").trim();
+    if (!key) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      await testGeminiKey(key, model.trim() || undefined);
+      setTestResult({ ok: true });
+    } catch (err) {
+      setTestResult({
+        ok: false,
+        message: err instanceof Error ? err.message : "Test failed.",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Card className="mt-5 rounded-3xl border-border/60 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-display text-xl tracking-tight">
+          <GeminiMark className="h-5 w-5 text-primary" />
+          AI Photo Scan
+        </CardTitle>
+        <CardDescription>
+          Photograph any meal to estimate calories and macros with AI. Bring
+          your own free Gemini key — it stays on this device.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Key row */}
+        <div className="space-y-1.5">
+          <Label htmlFor="ai-key" className="text-xs font-bold">
+            Gemini API key {hasKey && "· saved ✓"}
+          </Label>
+          {hasKey && !editingKey ? (
+            <div className="flex items-center gap-2">
+              <div className="flex h-11 flex-1 items-center rounded-2xl border border-border bg-muted/40 px-3 text-sm text-muted-foreground">
+                ••••••••••••{ai?.apiKey.slice(-4)}
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-2xl"
+                onClick={() => {
+                  setEditingKey(true);
+                  setKeyInput("");
+                }}
+              >
+                Change
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-2xl text-red-500 hover:bg-red-50 hover:text-red-600"
+                onClick={() => {
+                  onSave({ apiKey: "" });
+                  setEditingKey(false);
+                  setKeyInput("");                  setTestResult(null);
+                }}
+              >
+                Remove
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                id="ai-key"
+                type="password"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder="Paste your key"
+                autoComplete="off"
+                className="h-11 rounded-2xl text-base"
+              />
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 rounded-2xl"
+                  onClick={() => {
+                    if (!keyInput.trim()) return;
+                    onSave({ apiKey: keyInput.trim() });
+                    setEditingKey(false);
+                    setKeyInput("");
+                    setTestResult(null);
+                  }}
+                  disabled={!keyInput.trim()}
+                >
+                  Save key
+                </Button>
+                {hasKey && (
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl"
+                    onClick={() => setEditingKey(false)}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Get a free key at{" "}
+            <a
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-primary hover:underline"
+            >
+              aistudio.google.com/apikey
+            </a>
+            . When you scan a meal, the photo is sent directly from your
+            browser to Google — never to our servers — and is not stored.
+          </p>
+        </div>
+
+        {/* Model override */}
+        <div className="space-y-1.5">
+          <Label htmlFor="ai-model" className="text-xs font-bold">
+            Model (optional)
+          </Label>
+          <Input
+            id="ai-model"
+            value={model}
+            onChange={(e) => {
+              setModel(e.target.value);
+              onSave({ model: e.target.value.trim() || undefined });
+            }}
+            placeholder={DEFAULT_AI_MODEL}
+            className="h-11 rounded-2xl text-base"
+          />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Defaults to {DEFAULT_AI_MODEL}. Use a model your key can access —
+            e.g. gemini-2.5-flash-lite for a cheaper free-tier option.
+          </p>
+        </div>
+
+        {/* Test */}
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            className="rounded-2xl"
+            onClick={handleTest}
+            disabled={testing || (!hasKey && !keyInput.trim())}
+          >
+            {testing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Test key
+          </Button>
+          {testResult?.ok && (
+            <p className="text-sm font-semibold text-emerald-600">
+              Key works ✓
+            </p>
+          )}
+          {testResult && !testResult.ok && (
+            <p className="min-w-0 flex-1 truncate text-right text-xs text-destructive" title={testResult.message}>
+              {testResult.message}
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

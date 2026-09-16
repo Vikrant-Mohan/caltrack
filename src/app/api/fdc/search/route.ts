@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       const res = await fetch(href, {
         headers: {
           Accept: "application/json",
-          "User-Agent": "caltrack/0.1 (free calorie tracker)",
+          "User-Agent": "CalTrack/0.1 (free calorie tracker)",
         },
         // FDC changes rarely; cache upstream responses for an hour.
         next: { revalidate: 3600 },
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     const res = await fetch(fallback, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "caltrack/0.1 (free calorie tracker)",
+        "User-Agent": "CalTrack/0.1 (free calorie tracker)",
       },
       next: { revalidate: 3600 },
     });
