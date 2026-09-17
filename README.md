@@ -63,6 +63,17 @@ cp .env.local.example .env.local
 # add your FDC_API_KEY
 ```
 
+### Sign-in (optional) & Google in embedded views
+
+CalTrack works without an account; adding Firebase env vars enables
+email/password and "Continue with Google" sign-in. Google sign-in uses a
+full-page redirect — which some embedded browsers (in-app webviews, preview
+iframes) silently block. When that happens CalTrack falls back to **Google
+Identity Services**, an in-page account chooser that needs one extra env var:
+an OAuth 2.0 Web client ID from the same Google Cloud project, with your
+app's origins under "Authorized JavaScript origins" (see
+`.env.local.example` → `NEXT_PUBLIC_GOOGLE_CLIENT_ID`).
+
 ## Install as an app
 
 CalTrack is a PWA — see [install.md](install.md) for how to install it on desktop, Android and iOS, plus localhost testing notes.

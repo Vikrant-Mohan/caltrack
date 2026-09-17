@@ -20,12 +20,21 @@ function requireAuth() {
   return auth;
 }
 
+/** Firebase-style `code`, or our own sentinel (`redirect-blocked`, `gis-*`). */
+function authErrorCode(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    if ("code" in error) return String((error as { code: string }).code);
+    if ("message" in error) {
+      const msg = String((error as { message: string }).message);
+      if (msg === "redirect-blocked" || msg.startsWith("gis-")) return msg;
+    }
+  }
+  return "";
+}
+
 /** Map Firebase auth error codes to human-friendly messages. */
 export function authErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String((error as { code: string }).code)
-      : "";
+  const code = authErrorCode(error);
   switch (code) {
     case "auth/email-already-in-use":
       return "An account with that email already exists — try signing in instead.";
@@ -44,6 +53,19 @@ export function authErrorMessage(error: unknown): string {
       return "Your browser blocked the sign-in popup — try again; Google now opens as a full-page redirect.";
     case "auth/unauthorized-domain":
       return "This domain isn't authorized for Google sign-in. Add it in the Firebase console (Authentication → Settings → Authorized domains).";
+    case "redirect-blocked":
+      return "Google sign-in can't open from this embedded view. Open CalTrack in a normal browser tab, or sign in with email above.";
+    case "gis-unavailable":
+    case "gis-load-failed":
+      return "Google sign-in isn't available right now — try again, or sign in with email.";
+    case "gis-not-displayed":
+    case "gis-skipped":
+      return "Google couldn't show the account chooser here (embedded browsers often block it). Open CalTrack in a normal browser tab, or sign in with email above.";
+    case "gis-dismissed":
+      return "The Google account chooser was closed before finishing — try again.";
+    case "gis-no-credential":
+    case "gis-timeout":
+      return "Google sign-in didn't finish — try again, or sign in with email above.";
     case "auth/operation-not-allowed":
       return "Email/password or Google sign-in isn't enabled in your Firebase console.";
     default:
@@ -74,13 +96,33 @@ export async function logInWithEmail(email: string, password: string): Promise<v
   await signInWithEmailAndPassword(fb, email, password);
 }
 
-export async function logInWithGoogle(): Promise<void> {
+/** What happened after attempting a Google redirect sign-in. */
+export type GoogleSignInOutcome = { kind: "navigating" } | { kind: "blocked" };
+
+export async function logInWithGoogle(): Promise<GoogleSignInOutcome> {
   const fb = requireAuth();
   const provider = new GoogleAuthProvider();
   // Redirect instead of popup: embedded webviews, installed PWAs and strict
   // browsers block signInWithPopup (auth/popup-blocked). A full-page redirect
-  // to Google's consent screen works in every environment.
-  await signInWithRedirect(fb, provider);
+  // to Google's consent screen works in most environments.
+  //
+  // Race the SDK call itself: when an environment swallows the navigation,
+  // signInWithRedirect can hang on its internal handshake and never settle —
+  // don't leave the button spinning forever.
+  const sdkSettled = await Promise.race([
+    signInWithRedirect(fb, provider).then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), 5000)),
+  ]);
+  if (!sdkSettled) return { kind: "blocked" };
+  // The SDK resolving only means the navigation was *started*. Confirm the
+  // page is actually going away — embedded views sometimes drop it here.
+  const navigatedAway = await Promise.race([
+    new Promise<true>((resolve) => {
+      window.addEventListener("pagehide", () => resolve(true), { once: true });
+    }),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000)),
+  ]);
+  return navigatedAway ? { kind: "navigating" } : { kind: "blocked" };
 }
 
 /**

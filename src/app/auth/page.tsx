@@ -18,6 +18,7 @@ import {
   sendPasswordReset,
   signUpWithEmail,
 } from "@/lib/auth-api";
+import { isGisEnabled, logInWithGoogleGis } from "@/lib/google-gis";
 import { useAppStore, useHasHydrated } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 
@@ -88,22 +89,20 @@ export default function AuthPage() {
     clearRedirectError();
     setBusy(true);
     try {
-      // signInWithRedirect should navigate away almost immediately. If the
-      // browser (or an embedded webview) blocks the navigation, the promise
-      // can hang forever — bail out with a friendly message instead of a
-      // stuck spinner.
-      await Promise.race([
-        logInWithGoogle(),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("redirect-timeout")), 12000),
-        ),
-      ]);
+      // Try the standard Firebase redirect flow first. Some embedded views
+      // (preview iframes, in-app webviews) silently drop the navigation —
+      // logInWithGoogle detects that and returns "blocked", and we fall back
+      // to Google Identity Services (an in-page account chooser, no
+      // navigation or popup needed) when a client ID is configured.
+      const outcome = await logInWithGoogle();
+      if (outcome.kind === "navigating") return; // browser is leaving
+      if (isGisEnabled()) {
+        await logInWithGoogleGis();
+        return; // onAuthStateChanged takes over
+      }
+      setError(authErrorMessage(new Error("redirect-blocked")));
     } catch (err) {
-      setError(
-        err instanceof Error && err.message === "redirect-timeout"
-          ? "The sign-in window didn't open — your browser may be blocking it. Try again, or sign in with email."
-          : authErrorMessage(err),
-      );
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -289,6 +288,12 @@ export default function AuthPage() {
             <GoogleG />
             Continue with Google
           </Button>
+
+          {!configured && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Google sign-in unlocks once Firebase is configured.
+            </p>
+          )}
         </div>
 
         <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
